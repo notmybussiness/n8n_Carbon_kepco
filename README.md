@@ -2,6 +2,25 @@
 
 실시간 석탄 입찰 공고 자동 수집 및 분석 시스템
 
+---
+
+## 📸 스크린샷
+
+### Dashboard
+![Dashboard](docs/images/dashboard.png)
+
+### n8n Workflow Automation
+![n8n Workflow](docs/images/n8n_workflow.png)
+
+### Supabase 저장 데이터 샘플
+
+| 공고번호 | 공고명 | 발주기관 | 상태 |
+|----------|--------|----------|------|
+| SIM-TEST-1766233857 | Simulation Test Tender | - | OPEN |
+| 20241220001 | Test Coal Tender 2024 | Korea Test Power | OPEN |
+
+---
+
 ## ✨ 주요 기능
 
 ### 1. 자동 크롤링
@@ -30,7 +49,7 @@
 |------|------|
 | Backend | Python 3.12, FastAPI, Playwright |
 | Database | Supabase (PostgreSQL) |
-| Frontend | Next.js 16, Tailwind CSS v4 |
+| Frontend | Next.js 15, Tailwind CSS v4 |
 | Automation | n8n, Docker |
 
 ---
