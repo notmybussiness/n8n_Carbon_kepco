@@ -1,0 +1,35 @@
+{
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "explicit"
+    },
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+    "python.analysis.typeCheckingMode": "basic",
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "**/node_modules": true,
+        "**/.next": true
+    },
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/package-lock.json": true,
+        "**/.next": true
+    },
+    "tailwindCSS.experimental.classRegex": [
+        [
+            "className\\s*=\\s*[\"'`]([^\"'`]*)[\"'`]"
+        ]
+    ]
+}

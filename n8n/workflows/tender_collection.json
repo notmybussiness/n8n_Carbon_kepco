@@ -1,0 +1,315 @@
+{
+    "name": "CarbonFlow - 입찰 공고 수집",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "triggerAtHour": 9
+                        },
+                        {
+                            "triggerAtHour": 13
+                        },
+                        {
+                            "triggerAtHour": 17
+                        }
+                    ]
+                }
+            },
+            "id": "schedule-trigger",
+            "name": "Schedule Trigger",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                240,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "http://apis.data.go.kr/1230000/BidPublicInfoService04/getBidPblancListInfoThng",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "serviceKey",
+                            "value": "={{ $env.DATA_GO_KR_API_KEY }}"
+                        },
+                        {
+                            "name": "pageNo",
+                            "value": "1"
+                        },
+                        {
+                            "name": "numOfRows",
+                            "value": "100"
+                        },
+                        {
+                            "name": "type",
+                            "value": "json"
+                        },
+                        {
+                            "name": "inqryDiv",
+                            "value": "1"
+                        },
+                        {
+                            "name": "inqryBgnDt",
+                            "value": "={{ $now.minus({days: 7}).format('yyyyMMdd') }}0000"
+                        },
+                        {
+                            "name": "inqryEndDt",
+                            "value": "={{ $now.format('yyyyMMdd') }}2359"
+                        },
+                        {
+                            "name": "bidNtceNm",
+                            "value": "유연탄"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "g2b-api-call",
+            "name": "G2B API - 유연탄 검색",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                460,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// API 응답에서 입찰 공고 목록 추출\nconst response = $input.first().json;\n\ntry {\n  const body = response.response?.body;\n  \n  if (!body || !body.items) {\n    return [{ json: { error: 'No items in response', totalCount: 0 } }];\n  }\n  \n  let items = body.items;\n  \n  // items가 객체인 경우 item 배열 추출\n  if (items.item) {\n    items = Array.isArray(items.item) ? items.item : [items.item];\n  }\n  \n  if (!Array.isArray(items) || items.length === 0) {\n    return [{ json: { error: 'No items found', totalCount: 0 } }];\n  }\n  \n  // 석탄 관련 키워드 필터링\n  const coalKeywords = ['유연탄', '석탄', '연료', 'coal', 'bituminous'];\n  \n  const filteredItems = items.filter(item => {\n    const title = (item.bidNtceNm || '').toLowerCase();\n    return coalKeywords.some(kw => title.includes(kw.toLowerCase()));\n  });\n  \n  return filteredItems.map(item => ({\n    json: {\n      bid_ntce_no: item.bidNtceNo,\n      bid_ntce_ord: item.bidNtceOrd || '00',\n      bid_ntce_nm: item.bidNtceNm,\n      asign_bdgt_amt: item.asignBdgtAmt,\n      presmpt_prce: item.presmptPrce,\n      bid_clse_dt: item.bidClseDt,\n      dminstt_nm: item.dminsttNm,\n      dminstt_cd: item.dminsttCd,\n      bid_ntce_dtl_url: item.bidNtceDtlUrl,\n      rgst_dt: item.rgstDt,\n      source: 'G2B',\n      status: 'OPEN',\n      raw_api_response: item\n    }\n  }));\n  \n} catch (error) {\n  return [{ json: { error: error.message } }];\n}"
+            },
+            "id": "parse-response",
+            "name": "Parse API Response",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                680,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "check-error",
+                            "leftValue": "={{ $json.error }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "empty",
+                                "singleValue": true
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "filter-valid",
+            "name": "Filter Valid Items",
+            "type": "n8n-nodes-base.filter",
+            "typeVersion": 2,
+            "position": [
+                900,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "upsert",
+                "schema": {
+                    "__rl": true,
+                    "mode": "list",
+                    "value": "public"
+                },
+                "table": {
+                    "__rl": true,
+                    "mode": "list",
+                    "value": "tenders"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "bid_ntce_no": "={{ $json.bid_ntce_no }}",
+                        "bid_ntce_ord": "={{ $json.bid_ntce_ord }}",
+                        "bid_ntce_nm": "={{ $json.bid_ntce_nm }}",
+                        "asign_bdgt_amt": "={{ $json.asign_bdgt_amt }}",
+                        "presmpt_prce": "={{ $json.presmpt_prce }}",
+                        "bid_clse_dt": "={{ $json.bid_clse_dt }}",
+                        "dminstt_nm": "={{ $json.dminstt_nm }}",
+                        "dminstt_cd": "={{ $json.dminstt_cd }}",
+                        "bid_ntce_dtl_url": "={{ $json.bid_ntce_dtl_url }}",
+                        "source": "={{ $json.source }}",
+                        "status": "={{ $json.status }}",
+                        "raw_api_response": "={{ JSON.stringify($json.raw_api_response) }}"
+                    }
+                },
+                "conflictColumns": [
+                    "source",
+                    "bid_ntce_no",
+                    "bid_ntce_ord"
+                ],
+                "options": {}
+            },
+            "id": "supabase-upsert",
+            "name": "Supabase - Upsert Tenders",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 2.3,
+            "position": [
+                1120,
+                300
+            ],
+            "credentials": {
+                "postgres": {
+                    "id": "1",
+                    "name": "CarbonFlow PostgreSQL"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "high-budget",
+                            "leftValue": "={{ $json.asign_bdgt_amt }}",
+                            "rightValue": "10000000000",
+                            "operator": {
+                                "type": "number",
+                                "operation": "gte"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "filter-high-value",
+            "name": "Filter High Value (100억+)",
+            "type": "n8n-nodes-base.filter",
+            "typeVersion": 2,
+            "position": [
+                1340,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "channel": "#coal-trading",
+                "text": "=🔔 *신규 유연탄 입찰 공고*\n\n📋 *공고명:* {{ $json.bid_ntce_nm }}\n🏢 *발주처:* {{ $json.dminstt_nm }}\n💰 *예산:* {{ Math.round($json.asign_bdgt_amt / 100000000) }}억원\n📅 *마감:* {{ $json.bid_clse_dt }}\n🔗 {{ $json.bid_ntce_dtl_url }}",
+                "otherOptions": {}
+            },
+            "id": "slack-notify",
+            "name": "Slack Notification",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2.1,
+            "position": [
+                1560,
+                300
+            ],
+            "credentials": {
+                "slackApi": {
+                    "id": "2",
+                    "name": "Slack API"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Schedule Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "G2B API - 유연탄 검색",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "G2B API - 유연탄 검색": {
+            "main": [
+                [
+                    {
+                        "node": "Parse API Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parse API Response": {
+            "main": [
+                [
+                    {
+                        "node": "Filter Valid Items",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Filter Valid Items": {
+            "main": [
+                [
+                    {
+                        "node": "Supabase - Upsert Tenders",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Supabase - Upsert Tenders": {
+            "main": [
+                [
+                    {
+                        "node": "Filter High Value (100억+)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Filter High Value (100억+)": {
+            "main": [
+                [
+                    {
+                        "node": "Slack Notification",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": {
+        "instanceId": "carbonflow-local"
+    },
+    "tags": [
+        {
+            "name": "coal",
+            "createdAt": "2024-12-18T00:00:00.000Z",
+            "updatedAt": "2024-12-18T00:00:00.000Z"
+        }
+    ]
+}

@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+/* Tailwind CSS v4 Theme Configuration - High Contrast Dark Theme */
+@theme {
+  /* Background & Foreground - High Contrast */
+  --color-background: oklch(0.12 0.02 260);
+  --color-foreground: oklch(0.95 0.01 260);
+
+  /* Card */
+  --color-card: oklch(0.18 0.02 260);
+  --color-card-foreground: oklch(0.95 0.01 260);
+
+  /* Primary - Bright */
+  --color-primary: oklch(0.7 0.15 220);
+  --color-primary-foreground: oklch(0.98 0.01 260);
+
+  /* Secondary */
+  --color-secondary: oklch(0.28 0.02 260);
+  --color-secondary-foreground: oklch(0.95 0.01 260);
+
+  /* Muted - More Visible */
+  --color-muted: oklch(0.65 0.02 260);
+  --color-muted-foreground: oklch(0.65 0.02 260);
+
+  /* Accent */
+  --color-accent: oklch(0.28 0.02 260);
+  --color-accent-foreground: oklch(0.95 0.01 260);
+
+  /* Destructive */
+  --color-destructive: oklch(0.6 0.2 25);
+  --color-destructive-foreground: oklch(0.98 0.01 260);
+
+  /* Border - Slightly Visible */
+  --color-border: oklch(0.35 0.02 260);
+  --color-input: oklch(0.25 0.02 260);
+  --color-ring: oklch(0.7 0.1 220);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+
+/* Custom Utilities */
+@layer utilities {
+  .glass {
+    background-color: oklch(1 0 0 / 0.08);
+    backdrop-filter: blur(16px);
+    border: 1px solid oklch(1 0 0 / 0.15);
+  }
+}

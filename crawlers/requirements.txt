@@ -1,0 +1,34 @@
+# CarbonFlow Crawler Dependencies
+# Python 3.11+
+
+# Web Scraping
+playwright==1.40.0
+httpx==0.25.2
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# HWP Parsing
+olefile>=0.46
+
+# Database
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23
+supabase>=2.0.0
+
+# API Framework
+fastapi==0.104.1
+uvicorn==0.24.0
+
+# Google Gemini AI
+google-generativeai==0.3.1
+
+# Utilities
+python-dotenv==1.0.0
+pydantic==2.5.2
+tenacity>=8.2.3
+schedule==1.2.1
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pyhwp

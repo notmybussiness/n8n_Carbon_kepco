@@ -1,0 +1,93 @@
+{
+    "name": "CarbonFlow - KEPCO Crawler Automation",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "hours": 4
+                        }
+                    ]
+                }
+            },
+            "name": "Schedule",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                250,
+                300
+            ],
+            "id": "schedule-trigger"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "http://crawler:8000/crawl/kepco",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "keyword",
+                            "value": "유연탄"
+                        },
+                        {
+                            "name": "days",
+                            "value": "30"
+                        }
+                    ]
+                },
+                "options": {
+                    "timeout": 300000
+                }
+            },
+            "name": "Trigger Crawler",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                450,
+                300
+            ],
+            "id": "http-request-crawler"
+        },
+        {
+            "parameters": {},
+            "name": "Log Result",
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                650,
+                300
+            ],
+            "id": "log-result"
+        }
+    ],
+    "connections": {
+        "Schedule": {
+            "main": [
+                [
+                    {
+                        "node": "Trigger Crawler",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Trigger Crawler": {
+            "main": [
+                [
+                    {
+                        "node": "Log Result",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {},
+    "staticData": null,
+    "pinData": {}
+}

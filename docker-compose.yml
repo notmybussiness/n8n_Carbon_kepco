@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # n8n - Workflow Automation
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: carbonflow-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-carbonflow2024}
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=Asia/Seoul
+      - TZ=Asia/Seoul
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=carbonflow
+      - DB_POSTGRESDB_USER=${POSTGRES_USER:-carbonflow}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD:-carbonflow2024}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./crawlers:/home/node/crawlers:ro
+    depends_on:
+      - postgres
+    networks:
+      - carbonflow-network
+
+  # PostgreSQL - Main Database (Supabase-compatible)
+  postgres:
+    image: postgres:15-alpine
+    container_name: carbonflow-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-carbonflow}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-carbonflow2024}
+      - POSTGRES_DB=carbonflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./supabase/migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+      - carbonflow-network
+
+  # PostgREST - Auto-generated REST API
+  postgrest:
+    image: postgrest/postgrest:latest
+    container_name: carbonflow-postgrest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PGRST_DB_URI=postgres://${POSTGRES_USER:-carbonflow}:${POSTGRES_PASSWORD:-carbonflow2024}@postgres:5432/carbonflow
+      - PGRST_DB_SCHEMA=public
+      - PGRST_DB_ANON_ROLE=anon
+      - PGRST_JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-token-with-at-least-32-characters}
+    depends_on:
+      - postgres
+    networks:
+      - carbonflow-network
+
+  # Python Crawler Service
+  crawler:
+    build:
+      context: ./crawlers
+      dockerfile: Dockerfile
+    container_name: carbonflow-crawler
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./crawlers:/app
+      - crawler_data:/app/data
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-carbonflow}:${POSTGRES_PASSWORD:-carbonflow2024}@postgres:5432/carbonflow
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - TZ=Asia/Seoul
+    depends_on:
+      - postgres
+    networks:
+      - carbonflow-network
+
+volumes:
+  n8n_data:
+  postgres_data:
+  crawler_data:
+
+
+networks:
+  carbonflow-network:
+    driver: bridge
