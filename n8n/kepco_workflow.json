@@ -1,93 +1,191 @@
 {
-    "name": "CarbonFlow - KEPCO Crawler Automation",
-    "nodes": [
-        {
-            "parameters": {
-                "rule": {
-                    "interval": [
-                        {
-                            "field": "hours",
-                            "hours": 4
-                        }
-                    ]
-                }
-            },
-            "name": "Schedule",
-            "type": "n8n-nodes-base.scheduleTrigger",
-            "typeVersion": 1.1,
-            "position": [
-                250,
-                300
-            ],
-            "id": "schedule-trigger"
-        },
-        {
-            "parameters": {
-                "method": "POST",
-                "url": "http://crawler:8000/crawl/kepco",
-                "sendBody": true,
-                "bodyParameters": {
-                    "parameters": [
-                        {
-                            "name": "keyword",
-                            "value": "유연탄"
-                        },
-                        {
-                            "name": "days",
-                            "value": "30"
-                        }
-                    ]
-                },
-                "options": {
-                    "timeout": 300000
-                }
-            },
-            "name": "Trigger Crawler",
-            "type": "n8n-nodes-base.httpRequest",
-            "typeVersion": 4.1,
-            "position": [
-                450,
-                300
-            ],
-            "id": "http-request-crawler"
-        },
-        {
-            "parameters": {},
-            "name": "Log Result",
-            "type": "n8n-nodes-base.noOp",
-            "typeVersion": 1,
-            "position": [
-                650,
-                300
-            ],
-            "id": "log-result"
+  "name": "CarbonFlow - KEPCO 입찰공고 자동화",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 30 8 * * *"
+            }
+          ]
         }
-    ],
-    "connections": {
-        "Schedule": {
-            "main": [
-                [
-                    {
-                        "node": "Trigger Crawler",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Trigger Crawler": {
-            "main": [
-                [
-                    {
-                        "node": "Log Result",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        }
+      },
+      "name": "⏰ 매일 08:30 실행",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [100, 300],
+      "id": "schedule-trigger"
     },
-    "settings": {},
-    "staticData": null,
-    "pinData": {}
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://crawler:8000/crawl/kepco",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "keyword",
+              "value": "유연탄"
+            },
+            {
+              "name": "days",
+              "value": "7"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "name": "🔍 KEPCO SRM 조회",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [320, 300],
+      "id": "http-request-crawler"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.new_tenders_count }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "name": "❓ 신규 공고 확인",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [540, 300],
+      "id": "if-new-tenders"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "SPREADSHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": "입찰공고",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "공고번호": "={{ $json.tender_number }}",
+            "공고명": "={{ $json.title }}",
+            "발주기관": "={{ $json.organization }}",
+            "마감일": "={{ $json.deadline }}",
+            "상태": "={{ $json.status }}",
+            "수집일시": "={{ $now }}"
+          }
+        }
+      },
+      "name": "📊 Google Sheets 저장",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.1,
+      "position": [760, 200],
+      "id": "google-sheets-save"
+    },
+    {
+      "parameters": {
+        "channel": "#coal-trading",
+        "text": "🔔 *신규 석탄 입찰 공고*\n\n공고명: {{ $json.title }}\n발주기관: {{ $json.organization }}\n마감일: {{ $json.deadline }}\n\n👉 [상세보기]({{ $json.url }})",
+        "otherOptions": {}
+      },
+      "name": "💬 Slack 알림",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [980, 200],
+      "id": "slack-notification"
+    },
+    {
+      "parameters": {
+        "sendTo": "team@company.com",
+        "subject": "[CarbonFlow] 신규 입찰공고 알림 - {{ $json.title }}",
+        "emailType": "html",
+        "message": "<h2>🔔 신규 석탄 입찰 공고 발생</h2><table border='1'><tr><td><b>공고명</b></td><td>{{ $json.title }}</td></tr><tr><td><b>발주기관</b></td><td>{{ $json.organization }}</td></tr><tr><td><b>마감일</b></td><td>{{ $json.deadline }}</td></tr></table><br><a href='{{ $json.url }}'>상세보기</a>",
+        "options": {}
+      },
+      "name": "📧 Email 발송",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [980, 400],
+      "id": "email-notification"
+    },
+    {
+      "parameters": {},
+      "name": "✅ 완료 (변경 없음)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [760, 400],
+      "id": "no-changes"
+    }
+  ],
+  "connections": {
+    "⏰ 매일 08:30 실행": {
+      "main": [
+        [
+          {
+            "node": "🔍 KEPCO SRM 조회",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 KEPCO SRM 조회": {
+      "main": [
+        [
+          {
+            "node": "❓ 신규 공고 확인",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❓ 신규 공고 확인": {
+      "main": [
+        [
+          {
+            "node": "📊 Google Sheets 저장",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "✅ 완료 (변경 없음)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Google Sheets 저장": {
+      "main": [
+        [
+          {
+            "node": "💬 Slack 알림",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "📧 Email 발송",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {}
 }
